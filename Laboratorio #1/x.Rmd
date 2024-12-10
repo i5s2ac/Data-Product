@@ -1,0 +1,454 @@
+---
+title: "Lab 1"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+```
+
+
+# pag 4
+```{r}
+
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(crosstalk)
+library(DT)
+library(readr)
+library(viridis)
+
+# Cargar los datos con codificación adecuada
+datos_tienda <- read.csv("tienda.csv", fileEncoding = "ISO-8859-1")
+
+# Crear la columna 'Year' extrayendo el año de la columna 'Order.Date'
+datos_tienda$Sales <- as.numeric(datos_tienda$Sales)
+datos_tienda$Order.Date <- as.Date(datos_tienda$Order.Date, format="%m/%d/%Y")
+datos_tienda$Ship.Date <- as.Date(datos_tienda$Ship.Date, format="%m/%d/%Y")
+datos_tienda$Year <- format(datos_tienda$Order.Date, "%Y")
+
+# Calcular el tiempo de envío en días
+datos_tienda$Ship.Time <- as.numeric(difftime(datos_tienda$Ship.Date, datos_tienda$Order.Date, units = "days"))
+
+
+# Agrupar datos por todas las variables relevantes, incluyendo región y categoría
+data_grouped <- datos_tienda %>%
+  group_by(City, Country, Region, Category, Segment, Order.Date, Year, `Product.Name`, Ship.Mode) %>%
+  summarize(Total_Sales = sum(Sales, na.rm = TRUE),
+            Total_Profit = sum(Profit, na.rm = TRUE),
+            .groups = 'drop')
+
+# Crear un SharedData que contenga todos los datos agrupados
+shared_data <- SharedData$new(data_grouped)
+
+```
+
+
+
+
+
+## Fil 1
+
+
+### Control de Mando
+
+```{r}
+### Control de Mando
+
+filter_country <- filter_select("city", "Ciudad", 
+                                shared_data, ~City)
+filter_category <- filter_checkbox("category", "Categoría", 
+                                   shared_data, ~Category)
+filter_segment <- filter_checkbox("segment", "Segmento de Cliente", 
+                                   shared_data, ~Segment)
+filter_sales <- filter_slider("sales", "Rango de Ventas Totales", 
+                              shared_data, ~Total_Sales, 
+                              step = 100,  # Ajusta el paso según sea necesario
+                              width = '100%')
+filter_year <- filter_select("year", "Año", 
+                             shared_data, ~Year)
+filter_region <- filter_checkbox("region", "Región", 
+                                 shared_data, ~Region)
+filter_s_type <- filter_checkbox("s_type", "Tipo de envío", shared_data, ~Ship.Mode)
+
+# Mostrar los filtros en el panel de control
+filter_country
+filter_category
+filter_segment
+filter_sales
+
+```
+
+### Control de mando 2
+```{r}
+filter_year
+filter_s_type
+filter_region
+```
+
+
+## Fil 2
+
+### Tabla interactiva
+
+```{r}
+# Crear la tabla interactiva
+datatable(
+  shared_data,
+  options = list(
+    pageLength = 10,  # Número de filas que se mostrarán por página
+    autoWidth = TRUE,  # Ajustar el ancho de las columnas automáticamente
+    dom = 'Bfrtip',  # Elementos de la tabla a mostrar (botones, filtro, longitud de página, etc.)
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print')  # Botones para exportar datos
+  ),
+  rownames = FALSE,  # No mostrar los nombres de las filas
+  colnames = c("Región" = "Region", 
+               "Ciudad" = "City",
+               "Categoría" = "Category",
+               "Segmento" = "Segment",
+               "Ventas Totales" = "Total_Sales",
+               "Ganancias Totales" = "Total_Profit",
+               "Fecha del Pedido" = "Order.Date",
+               "Año" = "Year"
+  )
+)
+
+```
+
+## Fil 3
+
+### Gráfico de comparación entre ventas y ganancias por región
+
+```{r}
+# Crear gráfico de comparación entre ventas y ganancias por región
+comparison_plot <- plot_ly(shared_data, 
+                           x = ~Region, 
+                           y = ~Total_Sales, 
+                           type = 'bar', 
+                           name = 'Ventas Totales', 
+                           marker = list(color = 'rgb(67,130,189)')) %>%
+  add_trace(y = ~Total_Profit, name = 'Ganancias Totales', 
+            marker = list(color = 'rgb(89,145,145)')) %>%
+  layout(title = "Comparación de Ventas y Ganancias por Región",
+         xaxis = list(title = "Región"),
+         yaxis = list(title = "Monto ($)"),
+         barmode = 'stack') %>%
+  config(displayModeBar = FALSE)
+
+# Mostrar el gráfico interactivo
+comparison_plot
+
+```
+
+### Gráfico de pastel interactivo que alterna entre ventas y ganancias
+
+```{r}
+# Crear gráfico de pastel interactivo que alterna entre ventas y ganancias
+pie_chart <- plot_ly(shared_data, 
+                     labels = ~Region, 
+                     values = ~Total_Sales, 
+                     type = 'pie', 
+                     textinfo = 'label+percent',
+                     insidetextorientation = 'radial',
+                     name = 'Ventas Totales') %>%
+  add_trace(values = ~Total_Profit, 
+            name = 'Ganancias Totales') %>%
+  layout(title = "Distribución por Región",
+         updatemenus = list(
+           list(
+             buttons = list(
+               list(method = "restyle",
+                    args = list("values", list(~Total_Sales)),
+                    label = "Ventas Totales"),
+               list(method = "restyle",
+                    args = list("values", list(~Total_Profit)),
+                    label = "Ganancias Totales")
+             ),
+             direction = "down",
+             pad = list('r' = 10, 't' = 10),
+             showactive = TRUE,
+             x = 0.0,  # Ajuste horizontal del menú
+             xanchor = "left",
+             y = 1.50,  # Ajuste vertical del menú
+             yanchor = "top",
+             font = list(size = 12),  # Ajuste del tamaño de la fuente
+             bgcolor = 'rgba(255, 255, 255, 0.6)',  # Fondo transparente para el menú
+             bordercolor = 'rgba(0, 0, 0, 0.1)'  # Color del borde del menú
+           )
+         ),
+         margin = list(l = 0, r = -100000, t = -2000, b = -1000)) %>%
+  config(displayModeBar = FALSE)
+
+# Mostrar el gráfico interactivo
+pie_chart
+
+
+
+```
+
+##
+
+### Gráfico de líneas para la evolución de ventas y ganancias a lo largo del tiempo por región
+
+```{r}
+# Crear gráfico de líneas para la evolución de ventas y ganancias a lo largo del tiempo por región
+time_series_plot <- plot_ly(shared_data) %>%
+  add_trace(x = ~Order.Date, 
+            y = ~Total_Sales, 
+            type = 'scatter', 
+            mode = 'lines', 
+            color = ~Region, 
+            name = 'Ventas Totales',
+            line = list(width = 2)) %>%
+  add_trace(x = ~Order.Date, 
+            y = ~Total_Profit, 
+            type = 'scatter', 
+            mode = 'lines', 
+            color = ~Region, 
+            name = 'Ganancias Totales',
+            line = list(dash = 'dash', width = 2)) %>%
+  layout(title = "Evolución Temporal de Ventas y Ganancias por Región",
+         xaxis = list(title = "Fecha"),
+         yaxis = list(title = "Monto ($)"),
+         legend = list(title = list(text = "Métrica")),
+         hovermode = 'x unified') %>%
+  config(displayModeBar = FALSE)
+
+# Mostrar el gráfico interactivo
+time_series_plot
+
+
+```
+
+### Gráfico de Pastel de Ventas Totales por Modo de Envío
+
+```{r}
+### Gráfico de pastel interactivo para ventas totales por modo de envío
+
+# Crear gráfico de pastel para ventas totales por modo de envío
+pie_chart_shipping <- plot_ly(shared_data, 
+                              labels = ~Ship.Mode, 
+                              values = ~Total_Sales, 
+                              type = 'pie', 
+                              textinfo = 'label+percent',
+                              insidetextorientation = 'radial',
+                              name = 'Ventas Totales') %>%
+  layout(title = "Ventas Totales por Modo de Envío",
+         margin = list(l = 0, r = 0, t = 0, b = 0)) %>%
+  config(displayModeBar = FALSE)
+
+# Mostrar el gráfico interactivo
+pie_chart_shipping
+
+```
+
+##
+
+### Comparación de Ventas y Ganancias
+
+```{r}
+# Gráfico de comparación entre ventas y ganancias
+sales_profit_comparison <- plot_ly(shared_data, 
+                                   x = ~Total_Sales, 
+                                   y = ~Total_Profit, 
+                                   type = 'scatter', 
+                                   mode = 'markers', 
+                                   color = ~Category, 
+                                   text = ~paste("Producto:", `Product.Name`),
+                                   marker = list(size = 10)) %>%
+  layout(title = "Comparación de Ventas y Ganancias por Producto",
+         xaxis = list(title = "Ventas Totales ($)"),
+         yaxis = list(title = "Ganancias Totales ($)"),
+         hovermode = 'closest') %>%
+  config(displayModeBar = FALSE)
+
+# Mostrar el gráfico interactivo
+sales_profit_comparison
+
+
+```
+
+### Tiempo Promedio de Envío por Modo de Envío
+
+```{r}
+# Convertir las columnas Ship.Date y Order.Date al formato Date
+datos_tienda$Ship.Date <- as.Date(datos_tienda$Ship.Date, format="%m/%d/%Y")
+datos_tienda$Order.Date <- as.Date(datos_tienda$Order.Date, format="%m/%d/%Y")
+
+# Calcular el tiempo de envío en días
+datos_tienda$Ship.Time <- as.numeric(difftime(datos_tienda$Ship.Date, datos_tienda$Order.Date, units = "days"))
+
+# Agrupar los datos para obtener el tiempo promedio de envío por modo de envío
+shipping_time_data <- datos_tienda %>%
+  group_by(Ship.Mode) %>%
+  summarize(Avg_Ship_Time = mean(Ship.Time, na.rm = TRUE))
+
+# Crear gráfico de barras para tiempo promedio de envío por modo de envío
+shipping_time_plot <- plot_ly(shipping_time_data, 
+                              x = ~Ship.Mode, 
+                              y = ~Avg_Ship_Time, 
+                              type = 'bar', 
+                              marker = list(color = 'rgb(26,118,255)')) %>%
+  layout(title = "Tiempo Promedio de Envío por Modo de Envío",
+         xaxis = list(title = "Modo de Envío"),
+         yaxis = list(title = "Tiempo Promedio (días)")) %>%
+  config(displayModeBar = FALSE)
+
+# Mostrar el gráfico interactivo
+shipping_time_plot
+
+
+```
+
+## c
+
+### Los Productos con Más Ganancias
+
+```{r}
+# Filtrar los 10 productos con más ganancias
+top_products_profit <- data_grouped %>%
+  group_by(`Product.Name`) %>%
+  summarize(Total_Profit = sum(Total_Profit, na.rm = TRUE)) %>%
+  arrange(desc(Total_Profit)) %>%
+  top_n(10, wt = Total_Profit)
+
+# Crear gráfico de barras para los productos con más ganancias
+top_products_profit_plot <- plot_ly(top_products_profit, 
+                                    x = ~reorder(`Product.Name`, Total_Profit), 
+                                    y = ~Total_Profit, 
+                                    type = 'bar', 
+                                    name = 'Ganancias', 
+                                    marker = list(color = 'rgb(0,128,0)')) %>%
+  layout(title = "Top 10 Productos con Más Ganancias",
+         xaxis = list(title = "Producto", tickangle = -45),
+         yaxis = list(title = "Ganancias Totales ($)")) %>%
+  config(displayModeBar = FALSE)
+
+# Mostrar el gráfico interactivo
+top_products_profit_plot
+
+
+
+```
+
+### Productos Menos Rentables
+
+```{r}
+# Filtrar los 10 productos con menos ganancias
+bottom_products_profit <- data_grouped %>%
+  group_by(`Product.Name`) %>%
+  summarize(Total_Profit = sum(Total_Profit, na.rm = TRUE)) %>%
+  arrange(Total_Profit) %>%
+  top_n(-10, wt = Total_Profit)
+
+# Crear gráfico de barras para los productos con menos ganancias
+bottom_products_profit_plot <- plot_ly(bottom_products_profit, 
+                                       x = ~reorder(`Product.Name`, Total_Profit), 
+                                       y = ~Total_Profit, 
+                                       type = 'bar', 
+                                       name = 'Ganancias', 
+                                       marker = list(color = 'rgb(255,69,0)')) %>%
+  layout(title = "Top 10 Productos Menos Rentables",
+         xaxis = list(title = "Producto", tickangle = -45),
+         yaxis = list(title = "Ganancias Totales ($)")) %>%
+  config(displayModeBar = FALSE)
+
+# Mostrar el gráfico interactivo
+bottom_products_profit_plot
+
+```
+
+
+# pag2
+
+## tabla
+
+### Tabla con Ventas Totales y Ganancias por Estado 
+ 
+```{r}
+# Asumiendo que 'tienda' es tu dataframe y ya contiene las columnas necesarias
+state_analysis <- datos_tienda %>%
+  group_by(State) %>%
+  summarize(Total.Sales = sum(Sales), Total.Profit = sum(Profit), .groups = 'drop')
+
+# Obtener datos del mapa de EE.UU. a nivel de estado
+states <- map_data("state")
+
+# Asegurar que los nombres de los estados estén en minúsculas para la coincidencia
+state_analysis$State <- tolower(state_analysis$State)
+states$region <- tolower(states$region)
+
+# Unir los datos del análisis con los datos del mapa usando left_join
+state_map <- left_join(states, state_analysis, by = c("region" = "State"))
+
+# Crear una datatable interactiva
+interactive_table <- datatable(state_analysis, options = list(
+  pageLength = 10,
+  autoWidth = TRUE,
+  order = list(list(1, 'asc')),  # Ordena inicialmente por la primera columna ascendente
+  columnDefs = list(list(className = 'dt-center', targets = '_all'))
+))
+
+# Renderizar la tabla en un entorno R Markdown o Shiny
+interactive_table
+
+
+```
+
+### Mapa de Ventas Totales por Estado
+
+```{r}
+
+# Añadir columna de texto para tooltip con el nombre del estado y las ventas totales
+state_map$text <- paste(state_map$region, "Sales: ", state_map$Total.Sales)
+
+# Crear objetos compartidos para la interactividad
+shared_state_sales <- SharedData$new(state_map %>% filter(!is.na(Total.Sales)))
+
+# Crear objeto de datos compartidos para crosstalk
+shared_state_sales <- SharedData$new(state_map %>% filter(!is.na(Total.Sales)))
+
+# Mapa de Ventas por Estado
+sales_map <- ggplot(shared_state_sales, aes(x = long, y = lat, group = group, fill = Total.Sales, text = text, key = region)) +
+  geom_polygon(color = "black") +
+  theme_minimal() +
+  labs(title = "Mapa de Ventas Totales por Estado", fill = "Ventas Totales") +
+  scale_fill_viridis_c(option = "C") +
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+
+sales_map_interactive <- ggplotly(sales_map, tooltip = "text")
+
+sales_map_interactive
+```
+
+## Mapas
+
+### Mapa de Ganancias Totales por Estado
+
+```{r}
+
+state_map$text <- paste(state_map$region, "Profit: ", state_map$Total.Profit)
+shared_state_profit <- SharedData$new(state_map %>% filter(!is.na(Total.Profit)))
+
+# Mapa de Ganancias por Estado
+profit_map <- ggplot(shared_state_profit, aes(x = long, y = lat, group = group, fill = Total.Profit, text = text, key = region)) +
+  geom_polygon(color = "black") +
+  theme_minimal() +
+  labs(title = "Mapa de Ganancias Totales por Estado", fill = "Ganancias Totales") +
+  scale_fill_viridis_c(option = "C") +
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+
+# Convertir el gráfico a interactivo
+profit_map_interactive <- ggplotly(profit_map, tooltip = "text")
+
+# Mostrar el mapa interactivo
+profit_map_interactive
+
+```
+
+
+

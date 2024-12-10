@@ -1,0 +1,81 @@
+---
+title: "Lab 1. Flex Dashboard"
+author: "Alvaro Yec, Ximena Diaz, Isaac Cyrman"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+```
+
+
+```{r, include = FALSE}
+tienda <- read.csv('tienda.csv')
+head(tienda)
+```
+
+
+
+## Fila 1 
+
+### 1.1
+```{r }
+
+#tres segmentos: home office, consumer y corporate
+#ventas y ganancias -> suma?
+
+# Análisis de segmento
+analisis_segmento <- tienda %>%
+  group_by(Segment) %>%
+  summarise(Ventas = sum(Sales, na.rm = TRUE),
+            Ganancias = sum(Profit, na.rm = TRUE))
+
+# Gráfico de ventas por segmento
+p1 <- ggplot(analisis_segmento, aes(x = Segment, y = Ventas, fill = Segment)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Ventas Totales por Segmento", x = "Segmento", y = "Ventas Totales")
+
+ggplotly(p1)  # Convierte el gráfico de ggplot a plotly
+
+
+```
+
+
+### 1.2
+```{r}
+# Reutiliza 'analisis_segmento' ya que tiene los datos necesarios
+p2 <- ggplot(analisis_segmento, aes(x = Segment, y = Ganancias, fill = Segment)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Ganancias por Segmento", x = "Segmento", y = "Ganancias")
+
+ggplotly(p2)  # Convierte el gráfico de ggplot a plotly
+```
+
+
+### 2.1
+```{r}
+# Calcula el porcentaje de ganancia
+analisis_segmento <- analisis_segmento %>%
+  mutate(Porcentaje_Ganancia = (Ganancias / Ventas) * 100)
+
+# Gráfico de porcentaje de ganancia
+p3 <- ggplot(analisis_segmento, aes(x = Segment, y = Porcentaje_Ganancia, fill = Segment)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Porcentaje de Ganancia por Segmento", x = "Segmento", y = "Porcentaje de Ganancia")
+
+ggplotly(p3)  # Convierte el gráfico de ggplot a plotly
+```
+
+
+
+

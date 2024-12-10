@@ -1,0 +1,42 @@
+---
+title: "asdfasdf"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(readr)
+library(dplyr)
+library(leaflet)
+library(crosstalk)
+library(DT)
+library(ggplot2)
+library(tidygeocoder)
+library(tidyr)
+library(plotly)
+```
+
+```{r}
+data <- read_csv("tienda.csv")
+combined_data <- read.csv("combined_data.csv")
+```
+
+```
+### Chart A
+
+```{r}
+combined_data %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addCircleMarkers(
+    lng =~ lon,
+    lat =~ lat,
+    weight = 1,
+    radius= ~sqrt(count)*.66,
+    popup = ~paste(City, "<br>Count",count)
+  )
+
+```

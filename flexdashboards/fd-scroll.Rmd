@@ -1,0 +1,42 @@
+---
+title: "Diseño por Scroll"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+---
+
+
+```{r librerias, include=FALSE}
+library(flexdashboard)
+library(dplyr)
+library(ggplot2)
+```
+
+
+## Fila 1
+### Dataset Iris
+
+```{r Data}
+knitr::kable(iris %>% sample_n(50))
+```
+
+## Fila 2
+### Gráfica 
+
+```{r}
+iris %>% 
+  ggplot( aes(x=Species,y=Sepal.Width, color=Species) ) +
+  geom_boxplot()
+```
+
+### Histograma
+
+```{r}
+iris %>% 
+  ggplot ( aes(x=Sepal.Width, y=..density..,color=Species)) +
+  geom_histogram() +
+  geom_density() +
+  facet_grid(.~Species)
+
+```

@@ -1,0 +1,77 @@
+---
+title: "Terremotos y HTML Widgets"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+    social: ["twitter","linkedin","facebook"]
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(readr)
+library(dplyr)
+library(leaflet)
+library(crosstalk)
+library(DT)
+```
+
+```{r carga data}
+earthQuakeData <- read_csv("data/earthquakedata.csv")
+```
+# Estatico {data-icon=fa-hand-paper-o}
+
+## row
+
+### col 1
+
+```{r}
+earthQuakeData %>% 
+  filter(yr == 1995) %>% 
+  DT::datatable()
+```
+
+### col 2
+
+```{r}
+earthQuakeData %>% filter(yr == 1995) %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addMarkers(lng=~lon,
+             lat=~lat,
+             label=~mag)
+```
+
+# Dinamico {data-icon=fa-hand-paper-o}
+
+```{r dataframe dinamico}
+data_share <- SharedData$new(earthQuakeData %>% filter(yr > 2000))
+```
+## row
+
+###
+
+```{r}
+filter_slider("mag","Año", data_share, step = 0.1, width = 250, column = ~mag)
+
+filter_select("yr", "Año", data_share, group = ~yr, multiple = TRUE)
+```
+
+###
+
+```{r}
+data_share %>% 
+  DT::datatable()
+```
+
+###
+
+```{r}
+data_share %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addMarkers(lng=~lon,
+             lat=~lat,
+             label=~mag)
+```
+

@@ -1,0 +1,41 @@
+---
+title: "Lab 1"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(readr)
+library(dplyr)
+library(leaflet)
+library(crosstalk)
+library(DT)
+library(ggplot2)
+```
+
+```{r}
+data <- read_csv("tienda1.csv")
+```
+```{r}
+PPdf <- data %>% 
+  group_by(`Product Name`) %>% 
+  summarize(ProfitP = mean(Profit, na.rm = TRUE))
+```
+
+
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+
+```{r}
+PPdf %>% 
+  DT::datatable()
+
+
+```

@@ -1,0 +1,289 @@
+---
+title: "Laboratorio #1 - Data Product"
+author: "by Isaac Cyrman, Alvaro Yec, Ximena Diaz"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+  
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(knitr)
+library(maps)
+library(mapdata)
+library(DT)
+library(plotly)
+library(crosstalk)
+library(leaflet)
+```
+
+
+```{r}
+# Especificar la ruta del archivo
+file_path <- "tienda.csv"  
+
+# Cargar los datos
+tienda <- read.csv(file_path, encoding = 'latin1')
+
+```
+
+# Problema # 1
+
+
+# Problema # 2
+
+### Problema # 2 - Análisis de segmentos de ventas y ganancia
+
+Este problema aborda un análisis exhaustivo de las ventas y ganancias por segmentos de mercado en una tienda, utilizando R para manipular y visualizar los datos. El análisis comienza con la agrupación de datos por segmentos: Home Office, Consumer y Corporate. Se calculan las ventas y ganancias totales para cada segmento y se añade una medida de rendimiento adicional, el porcentaje de ganancia, que relaciona directamente las ganancias con las ventas.
+
+Para una visualización detallada y dinámica, se utilizan tanto gráficos como tablas interactivas. Se crean tres gráficos de barras utilizando ggplot2 y plotly para hacerlos interactivos. El primer gráfico muestra las ventas totales por segmento, el segundo las ganancias totales, y el tercer gráfico ilustra el porcentaje de ganancia por segmento, ofreciendo una vista comparativa de la eficiencia operativa entre los segmentos.
+
+Adicionalmente, se emplea DT (DataTables) para crear una tabla interactiva que resume estos tres aspectos claves (ventas, ganancias, y porcentaje de ganancia) en una sola vista, permitiendo ordenar los datos de forma ascendente o descendente. Este enfoque multifacético no solo facilita el análisis profundo de los datos de ventas y ganancias de la tienda por segmento, sino que también mejora la accesibilidad y la interactividad para los usuarios finales, permitiéndoles explorar y manipular los datos según necesiten.
+
+## Fila 1
+
+### Tabla de ventas, ganancias y porcentaje de ganancia
+
+```{r}
+library(DT)
+
+# Análisis de segmento con cálculo de porcentaje de ganancia
+analisis_segmento <- tienda %>%
+  group_by(Segment) %>%
+  summarise(
+    Ventas = sum(Sales, na.rm = TRUE),
+    Ganancias = sum(Profit, na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  mutate(Porcentaje_Ganancia = (Ganancias / Ventas) * 100)
+
+# Crear una DataTable interactiva para visualizar ventas, ganancias y porcentaje de ganancia
+datatable(
+  analisis_segmento,
+  options = list(
+    pageLength = 5,
+    autoWidth = TRUE,
+    order = list(list(1, 'asc')),  # Orden inicial por la primera columna ascendente
+    columnDefs = list(list(className = 'dt-center', targets = '_all'))
+  ),
+  rownames = FALSE
+)
+
+```
+
+### Gráfico de Barras de Ventas Totales por Segmento
+
+```{r }
+
+#tres segmentos: home office, consumer y corporate
+#ventas y ganancias -> suma?
+
+# Análisis de segmento
+analisis_segmento <- tienda %>%
+  group_by(Segment) %>%
+  summarise(Ventas = sum(Sales, na.rm = TRUE),
+            Ganancias = sum(Profit, na.rm = TRUE))
+
+# Gráfico de ventas por segmento
+p1 <- ggplot(analisis_segmento, aes(x = Segment, y = Ventas, fill = Segment)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Ventas Totales por Segmento", x = "Segmento", y = "Ventas Totales")
+
+ggplotly(p1)  # Convierte el gráfico de ggplot a plotly
+
+
+```
+
+## Fila 1
+
+
+### Gráfico de Barras de Ganancias por Segmento
+
+```{r}
+# Reutiliza 'analisis_segmento' ya que tiene los datos necesarios
+p2 <- ggplot(analisis_segmento, aes(x = Segment, y = Ganancias, fill = Segment)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Ganancias por Segmento", x = "Segmento", y = "Ganancias")
+
+ggplotly(p2)  # Convierte el gráfico de ggplot a plotly
+```
+
+
+### Gráfico de Barras de Porcentaje de ganancia por Segmento
+
+```{r}
+# Calcula el porcentaje de ganancia
+analisis_segmento <- analisis_segmento %>%
+  mutate(Porcentaje_Ganancia = (Ganancias / Ventas) * 100)
+
+# Gráfico de porcentaje de ganancia
+p3 <- ggplot(analisis_segmento, aes(x = Segment, y = Porcentaje_Ganancia, fill = Segment)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Porcentaje de Ganancia por Segmento", x = "Segmento", y = "Porcentaje de Ganancia")
+
+ggplotly(p3)  # Convierte el gráfico de ggplot a plotly
+```
+
+# Problema # 3
+
+### Problema # 3 - Análisis geográfico de ventas y ganancias
+
+Este código se centra en visualizar y resumir las ventas y ganancias por regiones y estados de una tienda. Utilizando la librería dplyr, los datos se agrupan por regiones y estados, y se calculan las sumas totales de ventas y ganancias para cada agrupación. Para las visualizaciones, se emplean gráficos de barras y mapas interactivos utilizando ggplot2 y plotly. Las tablas interactivas proporcionadas por datatable muestran los resultados numéricos de las ventas y ganancias, mientras que los gráficos de barras visualizan comparativamente las ventas y ganancias por región. Los mapas geográficos, construidos con ggplotly, ilustran las ventas y ganancias por estado, mejorando la interactividad con detalles adicionales en los tooltips que aparecen al pasar el cursor sobre los estados. Este enfoque proporciona una visión detallada y fácil de interpretar del rendimiento geográfico de la tienda.
+
+## Fila 1
+### Tabla con Ventas Totales y Ganacias por Región
+
+```{r}
+# Agrupar por región
+geo_analysis <- tienda %>%
+  group_by(Region) %>%
+  summarize(Total.Sales = sum(Sales), Total.Profit = sum(Profit))
+
+# Mostrar resumen en una tabla interactiva
+datatable(geo_analysis)
+```
+
+### Gráfico de Barras sobre Ventas por Región
+
+```{r}
+# Crear gráfico de ventas por región
+sales_plot <- ggplot(geo_analysis, aes(x = Region, y = Total.Sales, fill = Region)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Ventas Totales por Región", x = "Región", y = "Ventas Totales") +
+  scale_fill_brewer(palette = "Set3")
+
+# Hacer el gráfico interactivo
+ggplotly(sales_plot)
+
+```
+
+
+### Gráfico de Barras sobre Ganancias por Región
+
+```{r}
+# Crear gráfico de ganancias por región
+profit_plot <- ggplot(geo_analysis, aes(x = Region, y = Total.Profit, fill = Region)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Ganancias Totales por Región", x = "Región", y = "Ganancias Totales") +
+  scale_fill_brewer(palette = "Set3")
+
+# Hacer el gráfico interactivo
+ggplotly(profit_plot)
+
+```
+
+
+# pag2
+
+### Tabla con Ventas Totales y Ganancias por Estado 
+ 
+```{r}
+# Asumiendo que 'tienda' es tu dataframe y ya contiene las columnas necesarias
+state_analysis <- tienda %>%
+  group_by(State) %>%
+  summarize(Total.Sales = sum(Sales), Total.Profit = sum(Profit), .groups = 'drop')
+
+# Obtener datos del mapa de EE.UU. a nivel de estado
+states <- map_data("state")
+
+# Asegurar que los nombres de los estados estén en minúsculas para la coincidencia
+state_analysis$State <- tolower(state_analysis$State)
+states$region <- tolower(states$region)
+
+# Unir los datos del análisis con los datos del mapa usando left_join
+state_map <- left_join(states, state_analysis, by = c("region" = "State"))
+
+# Crear una datatable interactiva
+interactive_table <- datatable(state_analysis, options = list(
+  pageLength = 10,
+  autoWidth = TRUE,
+  order = list(list(1, 'asc')),  # Ordena inicialmente por la primera columna ascendente
+  columnDefs = list(list(className = 'dt-center', targets = '_all'))
+))
+
+# Renderizar la tabla en un entorno R Markdown o Shiny
+interactive_table
+
+
+```
+
+### Mapa de Ventas Totales por Estado
+
+```{r}
+
+# Añadir columna de texto para tooltip con el nombre del estado y las ventas totales
+state_map$text <- paste(state_map$region, "Sales: ", state_map$Total.Sales)
+
+# Crear objetos compartidos para la interactividad
+shared_state_sales <- SharedData$new(state_map %>% filter(!is.na(Total.Sales)))
+
+# Crear objeto de datos compartidos para crosstalk
+shared_state_sales <- SharedData$new(state_map %>% filter(!is.na(Total.Sales)))
+
+# Mapa de Ventas por Estado
+sales_map <- ggplot(shared_state_sales, aes(x = long, y = lat, group = group, fill = Total.Sales, text = text, key = region)) +
+  geom_polygon(color = "black") +
+  theme_minimal() +
+  labs(title = "Mapa de Ventas Totales por Estado", fill = "Ventas Totales") +
+  scale_fill_viridis_c(option = "C") +
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+
+sales_map_interactive <- ggplotly(sales_map, tooltip = "text")
+
+sales_map_interactive
+```
+
+### Mapa de Ganancias Totales por Estado
+
+```{r}
+
+state_map$text <- paste(state_map$region, "Profit: ", state_map$Total.Profit)
+shared_state_profit <- SharedData$new(state_map %>% filter(!is.na(Total.Profit)))
+
+# Mapa de Ganancias por Estado
+profit_map <- ggplot(shared_state_profit, aes(x = long, y = lat, group = group, fill = Total.Profit, text = text, key = region)) +
+  geom_polygon(color = "black") +
+  theme_minimal() +
+  labs(title = "Mapa de Ganancias Totales por Estado", fill = "Ganancias Totales") +
+  scale_fill_viridis_c(option = "C") +
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+
+# Convertir el gráfico a interactivo
+profit_map_interactive <- ggplotly(profit_map, tooltip = "text")
+
+# Mostrar el mapa interactivo
+profit_map_interactive
+
+```
+
+# Problema # 4
+
+
+
+```{r}
+combined_data %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addCircleMarkers(
+    lng =~ lon,
+    lat =~ lat,
+    weight = 1,
+    radius= ~sqrt(count)*.66,
+    popup = ~paste(City, "<br>Count",count)
+  )
+
+
+```
+
+
+
+
